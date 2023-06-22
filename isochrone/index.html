@@ -15,7 +15,7 @@ crossorigin=""></script>
   <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
 
   <div style="width:100%">
-  <div style="float:left; width:75%">
+  <div style="float:left; width:100%">
 
   <div id="map" style="height: 72vh"></div>
 
@@ -35,7 +35,7 @@ crossorigin=""></script>
  -->
   <!-- Valhalla Token: <input id="token" rows="1" cols="30" maxlength="256" wrap="hard" placeholder="Enter token."></input></br> -->
 
-  lat lng: <input type="text" id="latlng" value="51.24912, 0" size="20"/></br>
+  lat lng: <input type="text" id="latlng" value="-33.882089,151.210714" size="20"/></br>
     <!-- onchange=""  validate --> 
 
   Denoise: <input id="denoise" type="range" min="0" max="1" value="0" step="0.01" onchange="document.getElementById('denoise_text').value=this.value;" />
@@ -49,7 +49,10 @@ crossorigin=""></script>
   /></br>
 
   Contour minutes: <select id="contours">
-    <option selected>10 min</option>
+    <option >1 min</option>
+    <option >2 min</option>
+    <option selected>5 min</option>
+    <option>10 min</option>
     <option>20 min</option>
     <option>30 min</option>
     <option>10 min increments</option>
@@ -74,7 +77,7 @@ crossorigin=""></script>
   </div>
 
   <script>
-    const initLocation = {lat: 51.24912, lng: 0};
+    const initLocation = {lat: -33.882089, lng: 151.210714};
 
     //make a map using osm tiles
     var map = L.map('map').setView([initLocation.lat, initLocation.lng], 14);
@@ -139,17 +142,81 @@ crossorigin=""></script>
       marker.setLatLng(new_coord, {draggable: 'true'});
       onLocationChanged(new_coord);
     }
+    
 
     function getContours() {
       //build url
-      var url = 'http://localhost:8002/isochrone?json=';
-      var json = {}
-      json['locations'] = [{"lat":coord.lat, "lon":coord.lng}];
-      json['costing'] = document.getElementById('costing').value;
-      json['denoise'] = document.getElementById('denoise').value;
-      json['generalize'] = document.getElementById('generalize').value;
-      json['contours'] =  parseContour(document.getElementById('contours').value);
-      json['polygons'] = document.getElementById('polygons_lines').value === 'polygons';
+      var url = 'http://170.64.132.55:8002/isochrone?json=';
+
+      /*
+   {
+  "costing": "bicycle",
+  "costing_options": {
+    "bicycle": {
+      "exclude_polygons": [],
+      "maneuver_penalty": 5,
+      "country_crossing_penalty": 0,
+      "country_crossing_cost": 600,
+      "use_ferry": 1,
+      "use_living_streets": 0.8,
+      "service_penalty": 5,
+      "service_factor": 1,
+      "shortest": false,
+      "bicycle_type": "Hybrid",
+      "cycling_speed": 15,
+      "use_roads": 0,
+      "use_hills": 0.5,
+      "avoid_bad_surfaces": 0.25,
+      "gate_penalty": 300,
+      "gate_cost": 30
+    }
+  },
+  "contours": [{ "time": 3 }, { "time": 7 }, { "time": 11 }, { "time": 15 }],
+  "locations": [{ "lon": 151.2062153, "lat": -33.8827786, "type": "break" }],
+  "directions_options": { "units": "kilometers" },
+  "id": "valhalla_isochrones_lonlat_151.2062153,-33.8827786_range_15_interval_4"
+}
+
+
+
+      */
+      const json = {
+
+        "costing": "bicycle",
+        "costing_options": {
+          "bicycle": {
+            "exclude_polygons": [],
+            "maneuver_penalty": 5,
+            "country_crossing_penalty": 0,
+            "country_crossing_cost": 600,
+            "use_ferry": 1,
+            "use_living_streets": 0.8,
+            "service_penalty": 5,
+            "service_factor": 1,
+            "shortest": false,
+            "bicycle_type": "Hybrid",
+            "cycling_speed": 15,
+            "use_roads": 0,
+            "use_hills": 0.5,
+            "avoid_bad_surfaces": 0.25,
+            "gate_penalty": 300,
+            "gate_cost": 30
+          }
+        },
+
+        locations: [{lat: coord.lat, lon: coord.lng}],
+        // costing: document.getElementById('costing').value,
+        // contours: parseContour(document.getElementById('contours').value),
+        polygons: document.getElementById('polygons_lines').value === 'polygons',
+
+        contours: [{ "time": 1 }, { "time": 2 }, { "time": 3 }, { "time": 4 }]
+      }
+      // json['locations'] = [{"lat":coord.lat, "lon":coord.lng}];
+      // json['costing'] = document.getElementById('costing').value;
+      // json['denoise'] = document.getElementById('denoise').value;
+      // json['generalize'] = document.getElementById('generalize').value;
+      // json['contours'] =  parseContour(document.getElementById('contours').value);
+      // json['polygons'] = document.getElementById('polygons_lines').value === 'polygons';
 
       url += escape(JSON.stringify(json));
       //grab the url
@@ -182,6 +249,57 @@ crossorigin=""></script>
       })
     }
 
+  function debounce_leading(func, timeout = 300){
+    let timer;
+    return (...args) => {
+      if (!timer) {
+        func.apply(this, args);
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = undefined;
+      }, timeout);
+    };
+  }
+  /**
+ * @param {*} ctx The context
+ * @param {function} func The function to execute after the debounce time
+ * @param {number} delay The amount of time to wait
+ * @return {function} The debounced function
+ */
+const debounce = (func, delay) => {
+  let timeout;
+
+  return (...args) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
+  };
+};
+
+const throttle = (func, limit) => {
+  let lastFunc;
+  let lastRan;
+  return (...arguments) => {
+    if (!lastRan) {
+      func.apply(this, arguments);
+      lastRan = Date.now();
+    } else {
+      clearTimeout(lastFunc);
+      lastFunc = setTimeout(function() {
+        if (Date.now() - lastRan >= limit) {
+          func.apply(this, arguments);
+          lastRan = Date.now();
+        }
+      }, limit - (Date.now() - lastRan));
+    }
+  };
+};
+
     function onTileLayerChange() {
       var tileurl = document.getElementById('tileurl').value;
       var token = document.getElementById('maptoken').value;
@@ -205,6 +323,23 @@ crossorigin=""></script>
     }
 
     map.on('click', onMapClick);
+    map.on('moveend', () => {
+      console.log("moveend");
+    });
+
+    const throttledMouseMove = throttle(() => {console.log('move')}, 1000);
+    // Leaflet callback for when cursor moves on the map
+    map.on('mousemove', (e) => {
+      const new_coord = e.latlng;
+      console.log("Sending request for", new_coord);
+      // throttledMouseMove();
+
+
+      marker.setLatLng(new_coord, {draggable: 'true'});
+      onLocationChanged(new_coord);
+    });
+
+
     //hook up the callback for the text box changing
     document.getElementById('latlng').addEventListener('change', onLatLngInputChanged);
     ['denoise', 'generalize', 'costing', 'polygons_lines', 'contours'].forEach(
